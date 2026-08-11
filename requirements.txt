@@ -1,0 +1,14 @@
+# KymoTip_GUI本体(GUIプロセス側)の実行時依存関係。
+# SAM2/torchは対象外(DESIGN.md記載の通り、別途同梱するmicromamba環境からsubprocessで
+# 呼び出す設計のため、PyInstallerでの凍結対象に含めない)。
+# Phase 3(PyInstaller化)実施時は、このファイルを元に依存関係を同梱すること。
+
+PySide6
+numpy
+scipy
+matplotlib
+Pillow
+scikit-image
+opencv-python
+networkx
+loess
