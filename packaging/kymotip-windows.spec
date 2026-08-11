@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import PySide6
@@ -5,19 +6,61 @@ from PyInstaller.utils.hooks import collect_submodules
 
 
 project_root = Path(SPECPATH).parent
+# Analysis()のpathex引数はAnalysis.__init__内部でsys.path.extendされるため、
+# 下のhiddenimports=collect_submodules("kymotip.gui.stages")がAnalysis()の
+# 引数として評価される時点(Analysis呼び出しより前)ではまだ効かない。kymotipは
+# pip installされていないソース直下パッケージなので、ここでプロジェクトルートを
+# 明示的にsys.pathへ入れておかないとimportに失敗し、collect_submodulesは
+# 例外もwarningも出さず空リストを返す。その結果、pkgutil.iter_modulesによる
+# 動的ロードのみに依存する大半のビルトインステージがhiddenimportsに含まれず
+# PYZから抜け落ち、パッケージ版でタブが消える不具合の原因になっていた。
+sys.path.insert(0, str(project_root))
 app_icon = project_root / "packaging" / "icons" / "kymotip.ico"
 runtime_icon = project_root / "packaging" / "icons" / "kymotip.png"
 sam2_worker = project_root / "kymotip" / "segmentation" / "sam2_worker.py"
 
+# scipy.optimize/scipy.ndimage(ガウシアンフィットプラグイン等)はmkl_rt.2.dllを
+# 経由してIntel MKLを呼び出すが、mkl_rt.2.dllはスレッディング層/演算カーネルを
+# LoadLibrary()で実行時に動的ロードするため、PyInstallerの静的バイナリ依存解析では
+# 検出できず、Anaconda環境のLibrary\bin(condaアクティベート時のみPATHに乗る場所)
+# に置かれたままdistに同梱されない。その結果、mkl_intel_thread.2.dllのロードに失敗し
+# Intel MKLがプロセスごとFATAL ERRORで強制終了する不具合があった。ここで主要な
+# スレッディング層とCPU向け演算カーネル(汎用のmkl_def、多くのCPUに対応するmkl_avx2)
+# を明示的に同梱する。
+_mkl_bin_dir = Path(r"C:\Users\ysk-m\anaconda3\Library\bin")
+_mkl_dll_names = (
+    "mkl_core.2.dll",
+    "mkl_intel_thread.2.dll",
+    "libiomp5md.dll",
+    "mkl_def.2.dll",
+    "mkl_avx2.2.dll",
+)
+mkl_binaries = [
+    (str(_mkl_bin_dir / _name), ".") for _name in _mkl_dll_names
+]
+
 a = Analysis(
     [str(project_root / "packaging" / "launcher.py")],
     pathex=[str(project_root)],
-    binaries=[],
+    binaries=mkl_binaries,
     datas=[
         (str(runtime_icon), "packaging/icons"),
         (str(sam2_worker), "kymotip/segmentation"),
     ],
-    hiddenimports=collect_submodules("kymotip.gui.stages"),
+    hiddenimports=(
+        collect_submodules("kymotip.gui.stages")
+        # plugins/はビルド解析対象外(実行時に動的ロードされる)ため、本体が
+        # まだ使っていないサブモジュールをプラグインが使うと、ネイティブ拡張が
+        # 同梱されずロード時にPythonの例外として捕捉できないクラッシュで
+        # アプリごと落ちる(scipy.optimize/scipy.ndimageで実際に発生を確認済み)。
+        # scipy/scikit-imageは今後のプラグイン開発でサブモジュールが増えやすい
+        # ため丸ごと同梱し、matplotlib/loessはサイズ増分が小さいのでついでに
+        # 丸ごと同梱しておく。
+        + collect_submodules("scipy")
+        + collect_submodules("skimage")
+        + collect_submodules("matplotlib")
+        + collect_submodules("loess")
+    ),
     hookspath=[],
     # matplotlibは既定で全バックエンド(Tk/GTK/nbAgg等)を収集しようとし、
     # nbAgg経由でIPython/Jupyter一式まで巻き込んでビルドが肥大化するため、

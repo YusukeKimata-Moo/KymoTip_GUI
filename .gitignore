@@ -44,9 +44,11 @@ packaging/envs/
 /06_kymograph/
 /07_growth/
 /registration/
+/gaussian_fit_detection/
 
 # --- User-local plugins (personal experimentation; not reviewed for the lab) ---
-/plugins/
+/plugins/*
+!/plugins/gaussian_fit_detection/
 
 # --- Ad-hoc debug artifacts ---
 screenshot.png
