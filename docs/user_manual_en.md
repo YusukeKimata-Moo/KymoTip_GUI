@@ -263,7 +263,7 @@ The KymoTip repository includes a skill for developing plugins with Claude Code,
 
 - In the repository: `.claude/skills/kymotip-plugin-dev`
 - The Windows installer also copies this folder into the installed application as `.claude/`, so plugin development is possible even if you only installed the prebuilt app and never cloned the repository.
-- `plugins/gaussian_fit_detection` in the repository is a real-world example plugin (object position/width detection via 1D Gaussian fitting), in addition to the minimal example bundled with the skill.
+- `gaussian_fit_detection` (object position/width detection via 1D Gaussian fitting) is a real-world example plugin, in addition to the minimal example bundled with the skill. It's available as a zip archive on the GitHub Releases page.
 
 ---
 

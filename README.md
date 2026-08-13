@@ -67,9 +67,9 @@ and a working example plugin. The Windows installer copies this skill
 folder into the installed application folder as `.claude/`, so it's
 available for plugin development even if you only installed the prebuilt
 app and didn't clone this repository.
-[`plugins/gaussian_fit_detection`](plugins/gaussian_fit_detection) is a
-real-world example plugin included in this repository (object position/width
-detection via 1D Gaussian fitting).
+`gaussian_fit_detection` (object position/width detection via 1D Gaussian
+fitting) is a real-world example plugin, available as a zip archive on the
+[GitHub Releases](../../releases) page.
 
 ## Requirements
 

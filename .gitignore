@@ -46,12 +46,15 @@ packaging/envs/
 /registration/
 /gaussian_fit_detection/
 
-# --- User-local plugins (personal experimentation; not reviewed for the lab) ---
+# --- User-local plugins (personal experimentation; distributed via GitHub Releases, not the repo) ---
 /plugins/*
-!/plugins/gaussian_fit_detection/
 
 # --- Ad-hoc debug artifacts ---
 screenshot.png
+
+# --- Generated architecture visualization (not source) ---
+/architecture.html
+/architecture.json
 
 # --- Personal notes ---
 memo.md
@@ -59,3 +62,11 @@ LOGO_BRIEF.md
 
 # --- Reference notebooks (not part of the packaged app) ---
 *.ipynb
+
+# graft's local graph cache and generated config — regenerable, not committed (run `graft build`/`graft init`).
+graft/
+.ignore
+.mcp.json
+.claude/settings.json
+.claude/helpers/graft-statusline.cjs
+.claude/helpers/graft-hooks.cjs
