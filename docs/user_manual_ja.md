@@ -54,11 +54,31 @@ KymoTipは、タイムラプス顕微鏡画像から細胞の先端成長ダイ�
 1. **画像を用意する**。タイムラプス画像を `{ファイル名prefix}_{フレーム番号3桁}.{拡張子}`(例: `sample_000.tif`)という命名規則に従って1つのフォルダにまとめておきます(詳細は[5. 入力ファイルの形式・命名規則](#5-入力ファイルの形式命名規則)を参照)。フォルダ名は `00_raw` にしておくと、後述の一括反映がそのまま使えます。
 2. **「0. Input Preview」タブを開く**。「Input directory」にその画像フォルダを指定し、「Load frames」でフレームが正しく読み込めるか確認します。
 3. **プロジェクト設定を反映する**。同じタブの「Project base directory」に、`00_raw` を含む親フォルダを指定し、「File name prefix」に画像の共通ファイル名部分を入力して、「Apply to All Stages」をクリックします。これで「1. Registration」以降の全ステージの入出力フォルダとファイル名が自動的に設定されます。
+
+   ![Input Previewタブの実行例](images/quickstart/02_input_preview.png)
+
 4. **「1. Registration」を実行する**。パラメータは既定値のままで構いません。「Run」を押すとフレーム間の位置合わせが行われ、右側のプレビューで結果を確認できます。
+
+   ![Registrationタブの実行例](images/quickstart/03_registration.png)
+
 5. **「2. Segmentation」で対象を指定する**。「Load Frames from Input Directory」でフレームを読み込み、「Add Object」で解析対象(細胞など)を1つ追加し、プレビュー画像上を左クリックして対象領域を、必要に応じて右クリックで除外領域を指定します。「Run」を押すと、指定した点をもとに全フレームへ領域(マスク)が伝播します。
+
+   ![Segmentationタブで対象点を指定した例](images/quickstart/05a_segmentation_points.png)
+   ![Segmentationタブの実行結果例](images/quickstart/05b_segmentation_result.png)
+
 6. **「3. Contour」〜「5. Centerline」を順に実行する**。いずれも既定パラメータのまま「Run」を押すだけで、輪郭抽出→平滑化→中心線抽出が進みます。プレビューで形状が破綻していないか都度確認してください。
+
+   ![Contourタブの実行例](images/quickstart/06_contour.png)
+   ![Trajectoryタブの実行例](images/quickstart/07_trajectory.png)
+   ![Centerlineタブの実行例](images/quickstart/08_centerline.png)
+
 7. **「6. Kymograph」でキモグラフを作成する**。マスクフォルダ・中心線フォルダ・対象ID(既定は `obj0`)を確認し、「Run」を押すとキモグラフ画像が生成されます。
+
+   ![Kymographタブの実行例](images/quickstart/09_kymograph.png)
+
 8. **「7. Growth」で成長速度を求める**。「Pixels per micron」と「Time interval」を実験条件に合わせて入力し、「Run」を押すと細胞長・成長速度のグラフとCSVが出力されます。
+
+   ![Growthタブの実行例](images/quickstart/10_growth.png)
 
 一連の流れがつかめたら、[6. ステージ別リファレンス](#6-ステージ別リファレンス)で各ステージのパラメータの意味を確認しながら、実際のデータに合わせて調整してください。
 

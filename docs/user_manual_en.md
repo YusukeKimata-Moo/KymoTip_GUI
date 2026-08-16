@@ -54,11 +54,31 @@ If this is your first time using KymoTip, the fastest way to get oriented is to 
 1. **Prepare your images.** Put a time-lapse image series in one folder, named according to the pattern `{prefix}_{3-digit frame number}.{extension}` (e.g. `sample_000.tif`; see [5. Input File Format and Naming](#5-input-file-format-and-naming) for details). Naming the folder `00_raw` lets you take advantage of the bulk-apply feature described below.
 2. **Open the "0. Input Preview" tab.** Point "Input directory" at that image folder and click "Load frames" to confirm the frames read correctly.
 3. **Apply the project settings.** In the same tab, set "Project base directory" to the parent folder that contains `00_raw`, enter the shared part of the file name under "File name prefix," and click "Apply to All Stages." This fills in the input/output folders and file name prefix for every downstream stage automatically.
+
+   ![Input Preview tab example](images/quickstart/02_input_preview.png)
+
 4. **Run "1. Registration."** The default parameters are fine to start with. Click "Run" to align the frames, and check the result in the preview panel on the right.
+
+   ![Registration tab example](images/quickstart/03_registration.png)
+
 5. **Mark your target in "2. Segmentation."** Click "Load Frames from Input Directory," then "Add Object" to create one tracking target (e.g. a cell), and click on the preview image: left-click to mark the region you want included, right-click to mark anything that should be excluded. Clicking "Run" propagates a mask across every frame based on those points.
+
+   ![Segmentation tab with target points marked](images/quickstart/05a_segmentation_points.png)
+   ![Segmentation tab result example](images/quickstart/05b_segmentation_result.png)
+
 6. **Run "3. Contour" through "5. Centerline" in order.** Each of these can simply be run with default parameters; together they extract the outline, smooth it, and derive the centerline. Check the preview after each run to make sure the shape looks reasonable.
+
+   ![Contour tab example](images/quickstart/06_contour.png)
+   ![Trajectory tab example](images/quickstart/07_trajectory.png)
+   ![Centerline tab example](images/quickstart/08_centerline.png)
+
 7. **Generate a kymograph in "6. Kymograph."** Confirm the mask folder, centerline folder, and object ID (defaults to `obj0`), then click "Run" to produce the kymograph image.
+
+   ![Kymograph tab example](images/quickstart/09_kymograph.png)
+
 8. **Compute growth rate in "7. Growth."** Enter "Pixels per micron" and "Time interval" to match your imaging conditions, then click "Run" to get cell-length and growth-rate plots plus a CSV summary.
+
+   ![Growth tab example](images/quickstart/10_growth.png)
 
 Once you have a feel for the overall flow, use [6. Stage Reference](#6-stage-reference) to understand each parameter in more depth as you tune the pipeline for your own data.
 
