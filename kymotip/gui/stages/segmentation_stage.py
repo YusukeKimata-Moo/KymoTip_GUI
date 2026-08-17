@@ -27,6 +27,13 @@ from ...segmentation.prompts import FramePrompt, PointPrompt
 from ..settings import AppSettings
 from .base import DirPicker, StageWidgetBase
 
+DEVICE_LABEL_TO_VALUE = {
+    "Auto (GPU if available)": "auto",
+    "CPU": "cpu",
+    "GPU (CUDA)": "cuda",
+}
+DEVICE_VALUE_TO_LABEL = {v: k for k, v in DEVICE_LABEL_TO_VALUE.items()}
+
 OBJECT_COLORS = [
     QColor("#2ecc71"),
     QColor("#3498db"),
@@ -117,6 +124,15 @@ class SegmentationStage(StageWidgetBase):
         self.checkpoint_combo = QComboBox()
         self.checkpoint_combo.addItems(["tiny", "small", "base_plus", "large"])
         form_layout.addRow("Checkpoint", self.checkpoint_combo)
+
+        self.device_combo = QComboBox()
+        self.device_combo.addItems(["Auto (GPU if available)", "CPU", "GPU (CUDA)"])
+        device_label = DEVICE_VALUE_TO_LABEL.get(
+            self._settings.device_preference, "Auto (GPU if available)"
+        )
+        self.device_combo.setCurrentText(device_label)
+        self.device_combo.currentTextChanged.connect(self._on_device_changed)
+        form_layout.addRow("Device", self.device_combo)
 
         load_frames_button = QPushButton("Load Frames from Input Directory")
         load_frames_button.clicked.connect(self._load_frames)
@@ -252,6 +268,9 @@ class SegmentationStage(StageWidgetBase):
     def _on_sam2_root_changed(self, value: str) -> None:
         self._settings.sam2_root = value
 
+    def _on_device_changed(self, label: str) -> None:
+        self._settings.device_preference = DEVICE_LABEL_TO_VALUE.get(label, "auto")
+
     def _on_download_progress(self, downloaded: int, total: int) -> None:
         if total > 0:
             self.progress_bar.setRange(0, total)
@@ -280,6 +299,7 @@ class SegmentationStage(StageWidgetBase):
         self._last_output_dir = output_dir
         self._last_active_object_ids = list(active_objects.keys())
         checkpoint = self.checkpoint_combo.currentText()
+        device = DEVICE_LABEL_TO_VALUE.get(self.device_combo.currentText(), "auto")
 
         initial_prompts = {
             object_id: {frame_idx: FramePrompt(points=points) for frame_idx, points in frame_map.items()}
@@ -296,6 +316,7 @@ class SegmentationStage(StageWidgetBase):
                     output_dir=str(output_dir),
                     initial_prompts=initial_prompts,
                     checkpoint=checkpoint,
+                    device=device,
                     download_progress_callback=lambda done, total: self.download_progress.emit(done, total),
                 )
             except SegmentationError as exc:
@@ -307,6 +328,9 @@ class SegmentationStage(StageWidgetBase):
         n_frames = result.get("n_frames", 0)
         total_time = result.get("total_time_sec", 0)
         self.log(f"Processed {n_frames} frames in {total_time:.1f}s.")
+        device_message = result.get("device_message")
+        if device_message:
+            self.log(device_message)
 
         if not self._frames or self._last_output_dir is None:
             return

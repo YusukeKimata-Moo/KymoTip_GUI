@@ -48,6 +48,7 @@ def run_segmentation(
     output_dir: str | Path,
     initial_prompts: dict[str, dict[int, FramePrompt]] | None,
     checkpoint: str = "tiny",
+    device: str = "auto",
     box_margin: float = 0.1,
     timeout: float | None = None,
     download_progress_callback: ProgressCallback | None = None,
@@ -71,6 +72,7 @@ def run_segmentation(
     request = {
         "sam2_root": str(sam2_root),
         "checkpoint": checkpoint,
+        "device": device,
         "frames": [str(f) for f in frames],
         "output_dir": str(output_dir),
         "objects": (

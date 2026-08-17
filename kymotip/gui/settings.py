@@ -47,6 +47,14 @@ class AppSettings:
         self._settings.setValue("sam2_root", value)
 
     @property
+    def device_preference(self) -> str:
+        return self._settings.value("device_preference", "auto", str)
+
+    @device_preference.setter
+    def device_preference(self, value: str) -> None:
+        self._settings.setValue("device_preference", value)
+
+    @property
     def project_base_dir(self) -> str:
         return self._settings.value("project_base_dir", "", str)
 

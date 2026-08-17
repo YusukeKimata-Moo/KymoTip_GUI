@@ -12,6 +12,7 @@ JSON形式のリクエストファイルを1つ受け取り、全フレームの
 {
   "sam2_root": "<sam2環境のルートディレクトリ>",
   "checkpoint": "tiny" | "small" | "base_plus" | "large",
+  "device": "auto" | "cpu" | "cuda",
   "frames": ["<frame0のパス>", "<frame1のパス>", ...],
   "output_dir": "<マスクPNG等の出力先ディレクトリ>",
   "objects": {
@@ -125,6 +126,22 @@ def propagate_prompt(prev_mask, negative_points, box_margin):
     return {"points": points, "box": box}
 
 
+def _resolve_device(preference: str) -> tuple[str, str]:
+    """preference("auto"/"cpu"/"cuda")から実際に使用するdevice名とメッセージを返す。"""
+    import torch
+
+    cuda_available = torch.cuda.is_available()
+    if preference == "cpu":
+        return "cpu", "Using CPU."
+    if preference == "cuda":
+        if cuda_available:
+            return "cuda", "Using CUDA GPU."
+        return "cpu", "CUDA requested but not available; falling back to CPU."
+    if cuda_available:
+        return "cuda", "Using CUDA GPU (auto-detected)."
+    return "cpu", "Using CPU (no CUDA GPU detected)."
+
+
 def run_batch(request: dict) -> dict:
     import numpy as np
     from PIL import Image
@@ -147,7 +164,8 @@ def run_batch(request: dict) -> dict:
     from sam2.build_sam import build_sam2
     from sam2.sam2_image_predictor import SAM2ImagePredictor
 
-    model = build_sam2(cfg_name, ckpt_path, device="cpu")
+    device, device_message = _resolve_device(request.get("device", "auto"))
+    model = build_sam2(cfg_name, ckpt_path, device=device)
     predictor = SAM2ImagePredictor(model)
 
     n_frames = len(frames)
@@ -281,6 +299,8 @@ def run_batch(request: dict) -> dict:
         "python_exe": sys.executable,
         "n_frames": n_frames_with_data,
         "total_time_sec": round(t_total, 2),
+        "device_used": device,
+        "device_message": device_message,
         "frames": frame_results,
     }
 
