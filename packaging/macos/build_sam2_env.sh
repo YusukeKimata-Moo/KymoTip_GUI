@@ -16,6 +16,10 @@ PY_VERSION="3.11"
 # Windows版同梱環境(torch 2.4.0 / torchvision 0.19.0 / samv2 0.0.4)に合わせる。
 # numpy 2.xはtorch 2.4.0と組み合わせると不整合の恐れがあるため1.xに固定する。
 CHECKPOINT_URL="https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_tiny.pt"
+# GitHub Actionsのランナーからは上記が失敗することがあるため、同一ファイルの
+# Hugging Face公式ミラーを予備とする。どちらから取得してもハッシュで検証する。
+CHECKPOINT_MIRROR_URL="https://huggingface.co/facebook/sam2-hiera-tiny/resolve/main/sam2_hiera_tiny.pt"
+CHECKPOINT_SHA256="65b50056e05bcb13694174f51bb6da89c894b57b75ccdf0ba6352c597c5d1125"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -40,7 +44,10 @@ SAM2_BUILD_CUDA=0 uv pip install \
   "samv2==0.0.4"
 
 mkdir -p "$OUT/sam2/weights"
-curl -fL --retry 3 -o "$OUT/sam2/weights/sam2_hiera_tiny.pt" "$CHECKPOINT_URL"
+CKPT="$OUT/sam2/weights/sam2_hiera_tiny.pt"
+curl -fsSL --retry 3 -o "$CKPT" "$CHECKPOINT_URL" \
+  || curl -fsSL --retry 3 -o "$CKPT" "$CHECKPOINT_MIRROR_URL"
+echo "$CHECKPOINT_SHA256  $CKPT" | shasum -a 256 -c -
 
 # 取り込み確認(ここで失敗すればビルドを止める)
 "$OUT/bin/python3" -c "import torch, sam2, scipy, skimage; print('torch', torch.__version__)"
