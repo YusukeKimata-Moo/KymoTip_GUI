@@ -45,7 +45,22 @@ than the bundled `tiny` model; an internet connection is required for that.
 
 ### macOS
 
-Not currently supported.
+> **Warning: the macOS version is not tested.** It is built automatically on
+> GitHub Actions and has never been run on a real Mac. Expect problems, and
+> please report them via [Issues](../../issues).
+
+Apple Silicon (M1 or later) only; Intel Macs are not supported.
+
+1. Download the latest `KymoTip-<version>-macOS-arm64.dmg` from the
+   [Releases](../../releases) page.
+2. Open the `.dmg` and drag KymoTip into the Applications folder.
+3. The app is not signed with an Apple Developer ID or notarized, so macOS
+   blocks it on first launch. Right-click (or Control-click) KymoTip and
+   choose **Open**, then click **Open** in the dialog. If that is not offered,
+   go to **System Settings → Privacy & Security** and click **Open Anyway**.
+
+SAM2 segmentation runs on the CPU only on macOS (GPU acceleration is not
+supported).
 
 ### Building from source
 
@@ -73,7 +88,8 @@ fitting) is a real-world example plugin, available as a zip archive on the
 
 ## Requirements
 
-- Windows 10/11 (64-bit)
+- Windows 10/11 (64-bit), or macOS on Apple Silicon (not tested; see
+  [macOS](#macos))
 - Internet connection (only needed if you select a SAM2 checkpoint other
   than `tiny`)
 

@@ -142,6 +142,22 @@ def _resolve_device(preference: str) -> tuple[str, str]:
     return "cpu", "Using CPU (no CUDA GPU detected)."
 
 
+def _find_site_packages(sam2_root: str) -> str:
+    """sam2環境のsite-packagesを返す。
+
+    Windows環境: <root>/Lib/site-packages、Mac/Linux環境: <root>/lib/python3.X/site-packages。
+    """
+    import glob
+
+    windows_path = os.path.join(sam2_root, "Lib", "site-packages")
+    if os.path.isdir(windows_path):
+        return windows_path
+    candidates = sorted(glob.glob(os.path.join(sam2_root, "lib", "python3*", "site-packages")))
+    if candidates:
+        return candidates[-1]
+    raise FileNotFoundError(f"sam2環境のsite-packagesが見つかりません: {sam2_root}")
+
+
 def run_batch(request: dict) -> dict:
     import numpy as np
     from PIL import Image
@@ -158,8 +174,9 @@ def run_batch(request: dict) -> dict:
     ckpt_file, cfg_name = CHECKPOINT_MAP[checkpoint_name]
     ckpt_path = os.path.join(sam2_root, "sam2", "weights", ckpt_file)
 
-    sys.path.insert(0, os.path.join(sam2_root, "Lib", "site-packages"))
-    os.chdir(os.path.join(sam2_root, "Lib", "site-packages", "sam2"))
+    site_packages = _find_site_packages(sam2_root)
+    sys.path.insert(0, site_packages)
+    os.chdir(os.path.join(site_packages, "sam2"))
 
     from sam2.build_sam import build_sam2
     from sam2.sam2_image_predictor import SAM2ImagePredictor

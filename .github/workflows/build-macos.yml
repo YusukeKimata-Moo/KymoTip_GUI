@@ -1,0 +1,117 @@
+name: Build macOS (untested)
+
+# macOS版は実機で動作確認していない。ここでは「ビルドでき、.appが起動し、
+# 同梱sam2環境でCPUセグメンテーションが1回通る」ことのみをCIで確認する。
+# 成果物(.dmg)をReleaseに載せる作業は手動で行う。
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version string for the dmg name (e.g. 1.0.2)"
+        required: false
+        default: "0.0.0-dev"
+  push:
+    branches:
+      - feature/macos-build  # 動作確認用。master取り込み後は削除してよい
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: macos-14  # Apple Silicon (arm64)
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Resolve version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          VERSION="${VERSION:-0.0.0-dev}"
+          echo "KYMOTIP_VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Install app dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build SAM2 environment
+        run: bash packaging/macos/build_sam2_env.sh "$RUNNER_TEMP/sam2env"
+
+      - name: Build .app with PyInstaller
+        run: python -m PyInstaller --clean --noconfirm packaging/kymotip-macos.spec
+
+      - name: Bundle SAM2 environment and ad-hoc sign
+        run: |
+          ditto "$RUNNER_TEMP/sam2env" dist/KymoTip.app/Contents/Resources/sam2env
+          codesign --force --deep --sign - dist/KymoTip.app
+          codesign --verify --verbose=2 dist/KymoTip.app
+
+      - name: Smoke test - SAM2 segmentation on CPU (bundled environment)
+        env:
+          SAM2_ROOT_IN_APP: dist/KymoTip.app/Contents/Resources/sam2env
+        run: |
+          python - <<'EOF'
+          import os, tempfile
+          import numpy as np
+          from PIL import Image
+          from kymotip.segmentation.launcher import run_segmentation
+
+          d = tempfile.mkdtemp()
+          yy, xx = np.mgrid[0:256, 0:256]
+          frames = []
+          for i in range(3):
+              img = np.zeros((256, 256), np.uint8)
+              img[((yy - 128) / 30) ** 2 + ((xx - 100 - i * 5) / 60) ** 2 < 1] = 200
+              path = os.path.join(d, f"sample_{i:03d}.png")
+              Image.fromarray(img).save(path)
+              frames.append(path)
+          result = run_segmentation(
+              sam2_root=os.path.abspath(os.environ["SAM2_ROOT_IN_APP"]),
+              frames=frames,
+              output_dir=os.path.join(d, "out"),
+              initial_prompts=None,
+              checkpoint="tiny",
+              device="cpu",
+          )
+          print("segmentation ok:", result.get("ok"))
+          EOF
+
+      - name: Smoke test - launch app headless
+        run: |
+          QT_QPA_PLATFORM=offscreen dist/KymoTip.app/Contents/MacOS/KymoTip &
+          pid=$!
+          sleep 20
+          if kill -0 "$pid" 2>/dev/null; then
+            kill "$pid"
+            echo "app stayed alive for 20s"
+          else
+            status=0
+            wait "$pid" || status=$?
+            echo "app exited early with status $status"
+            exit 1
+          fi
+
+      - name: Create dmg
+        run: |
+          mkdir dmgroot
+          ditto dist/KymoTip.app dmgroot/KymoTip.app
+          ln -s /Applications dmgroot/Applications
+          mkdir -p dist/installer
+          hdiutil create -volname "KymoTip" -srcfolder dmgroot -ov -format UDZO \
+            "dist/installer/KymoTip-${KYMOTIP_VERSION}-macOS-arm64.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KymoTip-macOS-arm64-untested
+          path: dist/installer/*.dmg
+          retention-days: 14

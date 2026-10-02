@@ -38,11 +38,19 @@ The installer bundles everything the app needs to run, including a dedicated Pyt
 
 ### macOS
 
-Not currently supported.
+> **Warning: the macOS version is not tested.** It is built automatically on GitHub Actions and has never been run on a real Mac. Please report any problems via [Issues](../../issues).
+
+Apple Silicon (M1 or later) only; Intel Macs are not supported.
+
+1. Download the latest `KymoTip-<version>-macOS-arm64.dmg` from the [Releases](../../releases) page.
+2. Open the `.dmg` and drag KymoTip into the Applications folder.
+3. The app is not signed with an Apple Developer ID or notarized, so macOS blocks it on first launch. Right-click (or Control-click) KymoTip, choose **Open**, then click **Open** in the dialog. If that is not offered, go to **System Settings → Privacy & Security** and click **Open Anyway**.
+
+On macOS, SAM2 segmentation runs on the CPU only (GPU acceleration is not supported).
 
 ### System Requirements
 
-- Windows 10/11 (64-bit)
+- Windows 10/11 (64-bit), or macOS on Apple Silicon (not tested)
 - Internet connection (only needed when selecting a SAM2 checkpoint other than `tiny`)
 
 ---

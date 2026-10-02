@@ -38,11 +38,19 @@ KymoTipは、タイムラプス顕微鏡画像から細胞の先端成長ダイ�
 
 ### macOS
 
-現時点では未対応です。
+> **警告: macOS版は動作テストを行っていません(MacOS version is not tested)。** GitHub Actionsで自動ビルドしたものであり、実際のMacで起動・動作を確認していません。不具合があった場合は[Issues](../../issues)でご報告ください。
+
+Apple Silicon(M1以降)のみ対応です。Intel Macには対応していません。
+
+1. [Releases](../../releases)ページから最新の `KymoTip-<バージョン>-macOS-arm64.dmg` をダウンロードします。
+2. `.dmg` を開き、KymoTipを「アプリケーション」フォルダにドラッグします。
+3. Apple Developer IDによる署名と公証を行っていないため、初回起動時はmacOSにブロックされます。KymoTipを右クリック(またはControlを押しながらクリック)して「開く」を選び、表示されたダイアログでも「開く」を押してください。表示されない場合は「システム設定」→「プライバシーとセキュリティ」で「このまま開く」を押します。
+
+macOSではSAM2の領域分割はCPUのみで実行されます(GPU加速には対応していません)。
 
 ### 動作要件
 
-- Windows 10/11(64bit)
+- Windows 10/11(64bit)、またはApple SiliconのmacOS(動作未確認)
 - インターネット接続(`tiny`以外のSAM2チェックポイントを選択する場合のみ必要)
 
 ---

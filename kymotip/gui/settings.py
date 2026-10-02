@@ -17,8 +17,16 @@ def _default_sam2_root() -> str:
     """
     if not getattr(sys, "frozen", False):
         return ""
-    bundled = Path(sys.executable).resolve().parent / "sam2env"
-    return str(bundled) if bundled.is_dir() else ""
+    exe_dir = Path(sys.executable).resolve().parent
+    candidates = [exe_dir / "sam2env"]
+    if sys.platform == "darwin":
+        # .app内では実行ファイルが<app>/Contents/MacOSにあり、コード署名の制約上
+        # 非コードのデータは<app>/Contents/Resourcesに置く。
+        candidates.append(exe_dir.parent / "Resources" / "sam2env")
+    for bundled in candidates:
+        if bundled.is_dir():
+            return str(bundled)
+    return ""
 
 
 def _is_valid_sam2_root(path: str) -> bool:
