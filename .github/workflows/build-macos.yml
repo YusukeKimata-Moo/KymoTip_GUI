@@ -45,22 +45,28 @@ jobs:
           python -m pip install -r requirements.txt pyinstaller
 
       - name: Build SAM2 environment
-        run: bash packaging/macos/build_sam2_env.sh "$RUNNER_TEMP/sam2env"
+        run: >-
+          bash packaging/macos/ci_run.sh "Build SAM2 environment"
+          bash -x packaging/macos/build_sam2_env.sh "$RUNNER_TEMP/sam2env"
 
       - name: Build .app with PyInstaller
-        run: python -m PyInstaller --clean --noconfirm packaging/kymotip-macos.spec
+        run: >-
+          bash packaging/macos/ci_run.sh "PyInstaller"
+          python -m PyInstaller --clean --noconfirm packaging/kymotip-macos.spec
 
       - name: Bundle SAM2 environment and ad-hoc sign
         run: |
-          ditto "$RUNNER_TEMP/sam2env" dist/KymoTip.app/Contents/Resources/sam2env
-          codesign --force --deep --sign - dist/KymoTip.app
-          codesign --verify --verbose=2 dist/KymoTip.app
+          bash packaging/macos/ci_run.sh "Bundle and sign" bash -exc '
+            ditto "$RUNNER_TEMP/sam2env" dist/KymoTip.app/Contents/Resources/sam2env
+            codesign --force --deep --sign - dist/KymoTip.app
+            codesign --verify --verbose=2 dist/KymoTip.app
+          '
 
       - name: Smoke test - SAM2 segmentation on CPU (bundled environment)
         env:
           SAM2_ROOT_IN_APP: dist/KymoTip.app/Contents/Resources/sam2env
         run: |
-          python - <<'EOF'
+          bash packaging/macos/ci_run.sh "SAM2 smoke test" python - <<'EOF'
           import os, tempfile
           import numpy as np
           from PIL import Image
