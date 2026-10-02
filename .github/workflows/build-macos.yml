@@ -11,8 +11,6 @@ on:
         required: false
         default: "0.0.0-dev"
   push:
-    branches:
-      - feature/macos-build  # 動作確認用。master取り込み後は削除してよい
     tags:
       - "v*"
 
