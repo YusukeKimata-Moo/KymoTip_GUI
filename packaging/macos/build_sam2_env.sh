@@ -41,7 +41,8 @@ SAM2_BUILD_CUDA=0 uv pip install \
   --break-system-packages \
   "torch==2.4.0" "torchvision==0.19.0" \
   "numpy<2" "pillow" "scipy" "scikit-image" \
-  "samv2==0.0.4"
+  "samv2==0.0.4" \
+  "pytest"  # samv2 0.0.4はsam2/utils/download.pyでpytestをimportするが依存に宣言していない
 
 mkdir -p "$OUT/sam2/weights"
 CKPT="$OUT/sam2/weights/sam2_hiera_tiny.pt"
