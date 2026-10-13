@@ -10,6 +10,9 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QFrame,
@@ -21,15 +24,17 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QRadioButton,
     QScrollArea,
     QSplitter,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
 from ..frame_browser import FrameBrowser
-from ..settings import AppSettings
 from ..workers import run_in_background
+from ...history import HistoryError, RecordedRun, TaskSpec, series_info
 
 
 class DirPicker(QWidget):
@@ -74,9 +79,13 @@ class StageWidgetBase(QWidget):
     plugin_api_version: int = 1
     # タブ見出しに使う短い表示名。Noneならstage_titleをそのまま使う。
     tab_label: str | None = None
+    history_name: str | None = None
+    plugin_version: str | None = None
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._project_base = ""
+        self._project_prefix = ""
 
         self.input_dir_picker = DirPicker("input directory")
         self.output_dir_picker = DirPicker("output directory")
@@ -89,6 +98,7 @@ class StageWidgetBase(QWidget):
 
         param_box = QGroupBox(self.stage_title)
         param_box.setLayout(self.form_layout)
+        self.parameter_panel = param_box
 
         self.run_button = QPushButton("Run")
         self.run_button.setObjectName("runButton")
@@ -152,6 +162,11 @@ class StageWidgetBase(QWidget):
         既定では何もしない(サブクラスで必要な範囲だけ上書きする)。
         """
 
+    def set_project_context(self, base_dir: str | Path, fname: str) -> None:
+        """Set history context independently of a plugin's wire_project override."""
+        self._project_base = str(Path(base_dir).resolve()) if str(base_dir).strip() else ""
+        self._project_prefix = fname
+
     def add_auto_detect_button(
         self, form_layout: QFormLayout, fname_edit: QLineEdit, num_frames_spin
     ) -> None:
@@ -191,7 +206,7 @@ class StageWidgetBase(QWidget):
         """
         from ...core.io_utils import read_reference_image_size
 
-        base_dir = AppSettings().project_base_dir
+        base_dir = self._project_base
         if not base_dir or not fname:
             return None
         return read_reference_image_size(base_dir, fname)
@@ -200,13 +215,71 @@ class StageWidgetBase(QWidget):
         self.log_view.appendPlainText(message)
 
     def ensure_output_dir(self) -> Path:
-        output_dir = Path(self.output_dir_picker.path())
+        selected = self.output_dir_picker.path()
+        if not selected:
+            raise ValueError("Output directory is required.")
+        output_dir = Path(selected).resolve()
+        if self._project_base and output_dir == Path(self._project_base):
+            raise ValueError("Choose an output subfolder separate from the project base directory.")
         output_dir.mkdir(parents=True, exist_ok=True)
         return output_dir
 
+    def _legacy_task_spec(self, task) -> TaskSpec:
+        """Best-effort UI snapshot; never label a legacy callable as complete."""
+        if not callable(task):
+            raise TypeError("build_task() must return a TaskSpec or a callable.")
+        values = {}
+        visited = set()
+
+        def collect(owner, prefix=""):
+            for name, widget in vars(owner).items():
+                if name.startswith("_") or not isinstance(widget, QWidget) or id(widget) in visited:
+                    continue
+                if not self.parameter_panel.isAncestorOf(widget):
+                    continue
+                visited.add(id(widget))
+                key = prefix + name
+                if isinstance(widget, DirPicker):
+                    values[key] = widget.path()
+                elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
+                    values[key] = widget.value()
+                elif isinstance(widget, (QCheckBox, QRadioButton)):
+                    values[key] = widget.isChecked()
+                elif isinstance(widget, QComboBox):
+                    label = widget.currentText()
+                    values[key] = label if label.isascii() else {"selected_index": widget.currentIndex()}
+                elif isinstance(widget, QLineEdit):
+                    if widget.echoMode() == QLineEdit.Normal:
+                        values[key] = widget.text()
+                else:
+                    collect(widget, key + ".")
+
+        collect(self)
+        inputs = [series_info(self.input_dir_picker.path(), role="input")] if self.input_dir_picker.path() else []
+        outputs = [series_info(self.output_dir_picker.path(), role="output")] if self.output_dir_picker.path() else []
+        return TaskSpec(lambda context: task(), values, inputs, outputs, capture_mode="ui_snapshot_only")
+
     def _on_run_clicked(self) -> None:
+        if not self.run_button.isEnabled():
+            return
         try:
+            if not self._project_base or not Path(self._project_base).is_dir():
+                raise HistoryError("Set a valid project base directory in Input Preview and click Apply to All Stages.")
             task = self.build_task()
+            spec = task if isinstance(task, TaskSpec) else self._legacy_task_spec(task)
+            if spec.capture_mode == "ui_snapshot_only":
+                self.log("History: legacy plugin UI snapshot only; hidden parameters may be unavailable.")
+            stage_class = type(self)
+            stage_name = self.history_name or self.stage_title
+            if not stage_name.isascii():
+                stage_name = stage_class.__name__
+            recorded = RecordedRun(
+                spec, self._project_base, self._project_prefix,
+                stage_id=f"{stage_class.__module__}.{stage_class.__name__}",
+                stage_name=stage_name,
+                stage_kind="builtin" if stage_class.__module__.startswith("kymotip.gui.stages.") else "plugin",
+                plugin_version=self.plugin_version,
+            )
         except Exception as exc:
             QMessageBox.warning(self, "Invalid input", str(exc))
             return
@@ -215,12 +288,19 @@ class StageWidgetBase(QWidget):
         self.progress_bar.setVisible(True)
         self.log(f"[{self.stage_title}] Started.")
 
-        self._thread, self._worker = run_in_background(
-            task, self._on_task_finished, self._on_task_error
-        )
+        try:
+            self._thread, self._worker = run_in_background(
+                recorded, self._on_task_finished, self._on_task_error
+            )
+        except Exception as exc:
+            try:
+                recorded.finish("failed")
+            except Exception as history_error:
+                exc = HistoryError(f"{exc}\nHistory could not be saved: {history_error}")
+            self._on_task_error(str(exc))
 
     def build_task(self):
-        """サブクラスで、引数なしのcallable(バックグラウンドスレッドで実行)を返す。"""
+        """Return TaskSpec; legacy zero-argument callables remain supported."""
         raise NotImplementedError
 
     def on_task_finished(self, result) -> None:

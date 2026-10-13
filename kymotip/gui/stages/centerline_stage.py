@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QCheckBox, QFormLayout, QLineEdit, QSpinBox
 
 from ...core.centerline import compute_centerline, save_centerline_data
 from ...core.io_utils import ensure_dir, frame_path, save_xy_plot
+from ...history import TaskSpec, series_info
 from .base import StageWidgetBase
 
 
@@ -73,7 +74,13 @@ class CenterlineStage(StageWidgetBase):
         image_size = self.get_reference_image_size(fname) if save_images else None
         images_dir = ensure_dir(output_dir / "images") if save_images else None
 
-        def task():
+        def task(context):
+            parameters = context.parameters
+            num_frames = parameters["num_frames"]
+            o, m1, m2, mm = (parameters[name] for name in ("o", "m1", "m2", "mm"))
+            save_images = parameters["save_images"]
+            image_size = parameters.get("image_size")
+            input_dir = context.inputs[0]["directory"]
             last_centerline = None
             for frame in range(num_frames):
                 in_path = frame_path(input_dir, fname, frame, "txt")
@@ -95,7 +102,13 @@ class CenterlineStage(StageWidgetBase):
                 last_centerline = centerline
             return last_centerline
 
-        return task
+        parameters = {"num_frames": num_frames, "o": o, "m1": m1, "m2": m2, "mm": mm,
+                      "save_images": save_images}
+        if save_images:
+            parameters["image_size"] = image_size
+        return TaskSpec(task, parameters,
+                        inputs=[series_info(input_dir, fname, "txt", role="contours")],
+                        outputs=[series_info(output_dir, fname, "txt", role="centerlines")])
 
     def on_task_finished(self, result) -> None:
         fname = self.fname_edit.text().strip()

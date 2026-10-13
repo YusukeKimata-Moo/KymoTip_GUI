@@ -68,14 +68,14 @@ class InputPreviewStage(QWidget):
         base_dir = self.project_base_dir_picker.path()
         fname = self.fname_edit.text().strip()
 
-        self._settings.project_base_dir = base_dir
-        self._settings.project_fname = fname
-
         if not base_dir or not fname:
             QMessageBox.warning(
                 self, "Incomplete settings", "Project base directory and file name prefix are required."
             )
             return
+
+        self._settings.project_base_dir = base_dir
+        self._settings.project_fname = fname
 
         if self._on_apply_project is not None:
             self._on_apply_project(base_dir, fname)

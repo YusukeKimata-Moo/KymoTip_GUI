@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 
 from ...core.contour import extract_contour_from_outline_image, extract_contour_ordered
 from ...core.io_utils import ensure_dir, frame_path, save_xy_plot
+from ...history import TaskSpec, series_info
 from .base import StageWidgetBase
 
 _MASK_RE = re.compile(r"^mask_(\d{3})_(.+)\.[A-Za-z0-9]+$")
@@ -145,7 +146,15 @@ class ContourStage(StageWidgetBase):
         image_size = self.get_reference_image_size(fname) if save_images else None
         images_dir = ensure_dir(output_dir / "images") if save_images else None
 
-        def task():
+        def task(context):
+            parameters = context.parameters
+            num_frames = parameters["num_frames"]
+            use_mask_mode = parameters["mode"] == "mask"
+            resort_d = parameters.get("resort_d")
+            object_id = parameters.get("object_id")
+            save_images = parameters["save_images"]
+            image_size = parameters.get("image_size")
+            input_dir = context.inputs[0]["directory"]
             last_xy = None
             for frame in range(num_frames):
                 if use_mask_mode:
@@ -170,7 +179,21 @@ class ContourStage(StageWidgetBase):
                 last_xy = (x, y)
             return last_xy
 
-        return task
+        parameters = {"num_frames": num_frames, "mode": "mask" if use_mask_mode else "outline",
+                      "save_images": save_images}
+        if use_mask_mode:
+            parameters["object_id"] = object_id
+        else:
+            parameters["resort_d"] = resort_d
+        if save_images:
+            parameters["image_size"] = image_size
+        return TaskSpec(
+            task, parameters,
+            inputs=[series_info(input_dir, "mask" if use_mask_mode else fname,
+                                "*" if use_mask_mode else "png", role="masks" if use_mask_mode else "outlines",
+                                pattern="mask_{frame:03d}_{object_id}.*" if use_mask_mode else "{prefix}_{frame:03d}.png")],
+            outputs=[series_info(output_dir, fname, "txt", role="contours")],
+        )
 
     def on_task_finished(self, result) -> None:
         fname = self.fname_edit.text().strip()

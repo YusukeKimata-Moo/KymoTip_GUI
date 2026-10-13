@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 
 from ...segmentation.launcher import SegmentationError, run_segmentation
 from ...segmentation.prompts import FramePrompt, PointPrompt
+from ...history import TaskSpec, series_info, summarize_frames
 from ..settings import AppSettings
 from .base import DirPicker, StageWidgetBase
 
@@ -305,24 +306,37 @@ class SegmentationStage(StageWidgetBase):
             object_id: {frame_idx: FramePrompt(points=points) for frame_idx, points in frame_map.items()}
             for object_id, frame_map in active_objects.items()
         }
-        frames = self._frames
+        frames = tuple(str(Path(frame).resolve()) for frame in self._frames)
+        download_progress = self.download_progress.emit
 
-        def task():
-            self.progress_bar.setRange(0, 0)
+        def task(context):
+            parameters = context.parameters
+            prompts = {
+                object_id: {int(frame_idx): FramePrompt.from_dict(prompt)
+                            for frame_idx, prompt in frame_map.items()}
+                for object_id, frame_map in parameters["objects"].items()
+            }
             try:
                 return run_segmentation(
-                    sam2_root=sam2_root,
+                    sam2_root=parameters["sam2_root"],
                     frames=frames,
-                    output_dir=str(output_dir),
-                    initial_prompts=initial_prompts,
-                    checkpoint=checkpoint,
-                    device=device,
-                    download_progress_callback=lambda done, total: self.download_progress.emit(done, total),
+                    output_dir=context.outputs[0]["directory"],
+                    initial_prompts=prompts,
+                    checkpoint=parameters["checkpoint"],
+                    device=parameters["device"],
+                    box_margin=parameters["box_margin"],
+                    download_progress_callback=download_progress,
                 )
             except SegmentationError as exc:
                 raise RuntimeError(str(exc)) from exc
 
-        return task
+        return TaskSpec(
+            task, {"sam2_root": str(Path(sam2_root).resolve()), "checkpoint": checkpoint,
+                   "device": device, "box_margin": 0.1, "objects": initial_prompts},
+            inputs=summarize_frames(frames),
+            outputs=[series_info(output_dir, role="masks", pattern="mask_{frame:03d}_{object_id}",
+                                 object_ids=list(active_objects))],
+        )
 
     def on_task_finished(self, result) -> None:
         n_frames = result.get("n_frames", 0)

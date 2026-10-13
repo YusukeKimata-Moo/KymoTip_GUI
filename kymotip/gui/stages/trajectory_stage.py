@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from ...core.io_utils import ensure_dir, frame_path, save_xy_plot
 from ...core.trajectory import smooth_loess, smooth_moving_average
+from ...history import TaskSpec, series_info
 from .base import StageWidgetBase
 
 
@@ -87,7 +88,16 @@ class TrajectoryStage(StageWidgetBase):
         image_size = self.get_reference_image_size(fname) if save_images else None
         images_dir = ensure_dir(output_dir / "images") if save_images else None
 
-        def task():
+        def task(context):
+            parameters = context.parameters
+            num_frames = parameters["num_frames"]
+            use_loess = parameters["method"] == "loess"
+            degree = parameters.get("degree")
+            fraction = parameters.get("fraction")
+            window_size = parameters.get("window_size")
+            save_images = parameters["save_images"]
+            image_size = parameters.get("image_size")
+            input_dir = context.inputs[0]["directory"]
             last_xy = None
             for frame in range(num_frames):
                 in_path = frame_path(input_dir, fname, frame, "txt")
@@ -114,7 +124,14 @@ class TrajectoryStage(StageWidgetBase):
                 last_xy = (smoothed_x, smoothed_y)
             return last_xy
 
-        return task
+        parameters = {"num_frames": num_frames, "method": "loess" if use_loess else "moving_average",
+                      "save_images": save_images}
+        parameters.update({"degree": degree, "fraction": fraction} if use_loess else {"window_size": window_size})
+        if save_images:
+            parameters["image_size"] = image_size
+        return TaskSpec(task, parameters,
+                        inputs=[series_info(input_dir, fname, "txt", role="contours")],
+                        outputs=[series_info(output_dir, fname, "txt", role="smoothed_contours")])
 
     def on_task_finished(self, result) -> None:
         fname = self.fname_edit.text().strip()

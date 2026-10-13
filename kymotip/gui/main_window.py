@@ -92,6 +92,11 @@ class MainWindow(QMainWindow):
         # wire_projectはビルトイン・プラグイン両方に反映する必要があるため、
         # タブ表示の有無に関わらず全ステージをここで保持する。
         self.stages = builtin_stages + self.plugin_stages
+        for stage in self.stages:
+            stage.set_project_context(
+                self.input_preview_stage.project_base_dir_picker.path(),
+                self.input_preview_stage.fname_edit.text().strip(),
+            )
 
         self.tabs = AutoSizeTabWidget()
         self.tabs.setTabsClosable(True)
@@ -173,6 +178,7 @@ class MainWindow(QMainWindow):
         base = Path(base_dir)
         self.input_preview_stage.input_dir_picker.set_path(str(base / "00_raw"))
         for stage in self.stages:
+            stage.set_project_context(base, fname)
             try:
                 stage.wire_project(base, fname)
             except Exception as exc:

@@ -28,6 +28,7 @@ from ...core.growth import (
     smooth_series_loess,
 )
 from .base import StageWidgetBase
+from ...history import TaskSpec, series_info
 
 
 class GrowthStage(StageWidgetBase):
@@ -125,7 +126,16 @@ class GrowthStage(StageWidgetBase):
 
         centerline_base_path = f"{centerline_dir}/{fname}"
 
-        def task():
+        def task(context):
+            parameters = context.parameters
+            num_frames = parameters["num_frames"]
+            pixel_per_micron = parameters["pixel_per_micron"]
+            time_interval_sec = parameters["time_interval_sec"]
+            apply_lowess = parameters["apply_lowess"]
+            lowess_degree = parameters.get("lowess_degree")
+            lowess_fraction = parameters.get("lowess_fraction")
+            fig_size = parameters["fig_size"]
+            labsize = parameters["labsize"]
             cell_length_um = compute_cell_lengths(centerline_base_path, num_frames, pixel_per_micron)
             growth_rate = compute_growth_rate(cell_length_um, time_interval_sec)
 
@@ -160,7 +170,14 @@ class GrowthStage(StageWidgetBase):
 
             return {"Cell length": length_path, "Growth rate": rate_path, "Overlay": overlay_path}
 
-        return task
+        parameters = {"num_frames": num_frames, "pixel_per_micron": pixel_per_micron,
+                      "time_interval_sec": time_interval_sec, "apply_lowess": apply_lowess,
+                      "fig_size": fig_size, "labsize": labsize}
+        if apply_lowess:
+            parameters.update(lowess_degree=lowess_degree, lowess_fraction=lowess_fraction)
+        return TaskSpec(task, parameters,
+                        inputs=[series_info(centerline_dir, fname, "txt", role="centerlines")],
+                        outputs=[series_info(output_dir, fname, role="growth_plots_and_csv")])
 
     def on_task_finished(self, result) -> None:
         if not result:

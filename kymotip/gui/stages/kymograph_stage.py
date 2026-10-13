@@ -30,6 +30,7 @@ from ...core.kymograph import (
     process_images,
 )
 from .base import DirPicker, StageWidgetBase
+from ...history import TaskSpec, series_info
 
 
 class KymographStage(StageWidgetBase):
@@ -237,6 +238,8 @@ class KymographStage(StageWidgetBase):
         color1 = self.ch1_color_combo.currentText()
         color2 = self.ch2_color_combo.currentText()
         adjust_color_range = self.adjust_color_range_checkbox.isChecked()
+        fig_size = (self.fig_width_spin.value(), self.fig_height_spin.value())
+        image_ext = self.detected_ext
 
         image_base_path = f"{image_dir}/{fname}"
         centerline_base_path = f"{centerline_dir}/{fname}"
@@ -247,7 +250,19 @@ class KymographStage(StageWidgetBase):
         def mask_path_fn(frame: int) -> str:
             return f"{mask_dir}/mask_{frame:03d}_{object_id}.png"
 
-        def task():
+        def task(context):
+            parameters = context.parameters
+            num_frames = parameters["num_frames"]
+            sample_length = parameters["sample_length"]
+            fig_size = parameters["fig_size"]
+            image_ext = parameters["image_ext"]
+            line_width = parameters["line_width"]
+            labsize = parameters["labsize"]
+            pixel_per_micron = parameters["pixel_per_micron"]
+            adjust_color_range = parameters["adjust_color_range"]
+            time_interval_sec = parameters["time_interval_sec"]
+            axis_unit = parameters["axis_unit"]
+            use_two_channels = parameters["channel_count"] == 2
             process_images(
                 image_base_path,
                 None,
@@ -256,14 +271,14 @@ class KymographStage(StageWidgetBase):
                 num_frames,
                 sample_length=sample_length,
                 mask_path_fn=mask_path_fn,
-                image_ext=self.detected_ext,
+                image_ext=image_ext,
             )
             kymo_path = generate_kymograph(
                 fname,
                 brightness_base_path,
                 num_frames,
                 str(output_dir),
-                fig_size=(self.fig_width_spin.value(), self.fig_height_spin.value()),
+                fig_size=fig_size,
                 line_width=line_width,
                 labsize=labsize,
                 pixel_per_micron=pixel_per_micron,
@@ -283,14 +298,14 @@ class KymographStage(StageWidgetBase):
                 num_frames,
                 sample_length=sample_length,
                 mask_path_fn=mask_path_fn,
-                image_ext=self.detected_ext,
+                image_ext=image_ext,
             )
             ch2_kymo_path = generate_kymograph(
                 ch2_fname,
                 ch2_brightness_base_path,
                 num_frames,
                 str(output_dir),
-                fig_size=(self.fig_width_spin.value(), self.fig_height_spin.value()),
+                fig_size=fig_size,
                 line_width=line_width,
                 labsize=labsize,
                 pixel_per_micron=pixel_per_micron,
@@ -303,19 +318,32 @@ class KymographStage(StageWidgetBase):
                 ch2_brightness_base_path,
                 num_frames,
                 str(output_dir),
-                fig_size=(self.fig_width_spin.value(), self.fig_height_spin.value()),
+                fig_size=fig_size,
                 line_width=line_width,
                 labsize=labsize,
                 pixel_per_micron=pixel_per_micron,
                 adjust_color_range=adjust_color_range,
-                color1=color1,
-                color2=color2,
+                color1=parameters["color1"],
+                color2=parameters["color2"],
                 time_interval_sec=time_interval_sec,
                 axis_unit=axis_unit,
             )
             return {"Channel 1": kymo_path, "Channel 2": ch2_kymo_path, "Merged": merged_path}
 
-        return task
+        parameters = {"num_frames": num_frames, "sample_length": sample_length, "fig_size": fig_size,
+                      "image_ext": image_ext, "line_width": line_width, "labsize": labsize,
+                      "pixel_per_micron": pixel_per_micron, "time_interval_sec": time_interval_sec,
+                      "axis_unit": axis_unit, "adjust_color_range": adjust_color_range,
+                      "channel_count": 2 if use_two_channels else 1, "object_id": object_id}
+        inputs = [series_info(image_dir, fname, image_ext, role="images", channel=1),
+                  series_info(mask_dir, "mask", "png", role="masks", object_id=object_id),
+                  series_info(centerline_dir, fname, "txt", role="centerlines")]
+        outputs = [series_info(output_dir, fname, role="kymograph_and_brightness", channel=1)]
+        if use_two_channels:
+            parameters.update(color1=color1, color2=color2)
+            inputs.append(series_info(ch2_image_dir, ch2_fname, image_ext, role="images", channel=2))
+            outputs.append(series_info(output_dir, ch2_fname, role="kymograph_and_brightness", channel=2))
+        return TaskSpec(task, parameters, inputs=inputs, outputs=outputs)
 
     def on_task_finished(self, result) -> None:
         if not result:

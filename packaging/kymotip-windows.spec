@@ -27,7 +27,8 @@ sam2_worker = project_root / "kymotip" / "segmentation" / "sam2_worker.py"
 # Intel MKLがプロセスごとFATAL ERRORで強制終了する不具合があった。ここで主要な
 # スレッディング層とCPU向け演算カーネル(汎用のmkl_def、多くのCPUに対応するmkl_avx2)
 # を明示的に同梱する。
-_mkl_bin_dir = Path(r"C:\Users\ysk-m\anaconda3\Library\bin")
+# PyInstallerを実行しているPython環境を使い、個人のインストール先に依存しない。
+_mkl_bin_dir = Path(sys.prefix) / "Library" / "bin"
 _mkl_dll_names = (
     "mkl_core.2.dll",
     "mkl_intel_thread.2.dll",

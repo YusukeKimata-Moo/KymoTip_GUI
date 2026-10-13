@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...core.registration import ChannelSpec, run_registration
+from ...history import TaskSpec, series_info
 from .base import DirPicker, StageWidgetBase
 
 
@@ -195,20 +196,29 @@ class RegistrationStage(StageWidgetBase):
         d = self.d_spin.value()
         n_fill = self.n_fill_spin.value()
 
-        def task():
+        def task(context):
+            captured_channels = [
+                ChannelSpec(input_dir=source["directory"], output_dir=target["directory"],
+                            fname=source["prefix"], ext=source["extension"])
+                for source, target in zip(context.inputs, context.outputs)
+            ]
             run_registration(
-                channels=channels,
-                angs=angs,
-                ange=ange,
-                dtheta=dtheta,
-                start_t=start_t,
-                num_t=num_t,
-                d=d,
-                n_fill=n_fill,
+                channels=captured_channels,
+                **dict(context.parameters),
             )
-            return output_dir
+            return context.outputs[0]["directory"]
 
-        return task
+        return TaskSpec(
+            task, {"angs": angs, "ange": ange, "dtheta": dtheta, "start_t": start_t,
+                   "num_t": num_t, "d": d, "n_fill": n_fill},
+            inputs=[series_info(channel.input_dir, channel.fname, channel.ext,
+                                role="images", channel=index + 1, reference_frame=0,
+                                first_processed_frame=max(start_t, 1), stop_frame_exclusive=num_t)
+                    for index, channel in enumerate(channels)],
+            outputs=[series_info(channel.output_dir, channel.fname, channel.ext,
+                                 role="registered_images", channel=index + 1)
+                     for index, channel in enumerate(channels)],
+        )
 
     def on_task_finished(self, result) -> None:
         from ...core.io_utils import frame_path, normalize_for_display, read_image_any

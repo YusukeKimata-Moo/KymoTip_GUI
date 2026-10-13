@@ -19,6 +19,8 @@ from PySide6.QtWidgets import QFormLayout, QLineEdit, QSpinBox
 
 from kymotip.plugin_api import (
     StageWidgetBase,
+    TaskSpec,
+    series_info,
     append_log,
     ensure_dir,
     read_image_any,
@@ -36,6 +38,7 @@ class CellShapeExampleStage(StageWidgetBase):
     # common convention.
     plugin_order = 2.5
     plugin_api_version = 1
+    plugin_version = "1.1.0"
 
     def wire_project(self, base_dir: Path, fname: str) -> None:
         self.input_dir_picker.set_path(str(base_dir / "02_segmentation"))
@@ -62,8 +65,11 @@ class CellShapeExampleStage(StageWidgetBase):
             raise ValueError("Output directory is required.")
         num_frames = self.num_frames_spin.value()
 
-        def task():
-            out_dir = ensure_dir(output_dir)
+        def task(context):
+            object_id = context.parameters["object_id"]
+            num_frames = context.parameters["num_frames"]
+            input_dir = context.inputs[0]["directory"]
+            out_dir = ensure_dir(context.outputs[0]["directory"])
             log_path = Path(out_dir) / f"{object_id}_cell_shape.tsv"
             columns = ["frame", "area_px", "perimeter_px"]
             for frame in range(num_frames):
@@ -93,7 +99,11 @@ class CellShapeExampleStage(StageWidgetBase):
                 )
             return str(log_path)
 
-        return task
+        return TaskSpec(
+            task, {"object_id": object_id, "num_frames": num_frames},
+            inputs=[series_info(input_dir, "mask", "*", role="masks", object_id=object_id)],
+            outputs=[series_info(output_dir, object_id, "tsv", role="cell_shape_measurements")],
+        )
 
     def on_task_finished(self, result) -> None:
         self.log(f"Saved: {result}")
