@@ -14,7 +14,14 @@ sys.path.insert(0, str(project_root))
 app_icon = project_root / "packaging" / "icons" / "kymotip.icns"
 runtime_icon = project_root / "packaging" / "icons" / "kymotip.png"
 sam2_worker = project_root / "kymotip" / "segmentation" / "sam2_worker.py"
-app_version = os.environ.get("KYMOTIP_VERSION", "0.0.0-dev")
+from kymotip import __version__ as source_version
+
+app_version = os.environ.get("KYMOTIP_VERSION") or source_version
+
+
+def include_runtime_module(module_name):
+    # 配布用の解析ライブラリは維持し、テスト・ベンチマークを収集しない。
+    return not {"tests", "test", "testing", "benchmarks"}.intersection(module_name.split("."))
 
 a = Analysis(
     [str(project_root / "packaging" / "launcher.py")],
@@ -28,10 +35,10 @@ a = Analysis(
         collect_submodules("kymotip.gui.stages")
         # plugins/はビルド解析対象外(実行時に動的ロードされる)ため、プラグインが
         # 使いうるサブモジュールを丸ごと同梱する(Windows版と同じ方針)。
-        + collect_submodules("scipy")
-        + collect_submodules("skimage")
-        + collect_submodules("matplotlib")
-        + collect_submodules("loess")
+        + collect_submodules("scipy", filter=include_runtime_module)
+        + collect_submodules("skimage", filter=include_runtime_module)
+        + collect_submodules("matplotlib", filter=include_runtime_module)
+        + collect_submodules("loess", filter=include_runtime_module)
     ),
     hookspath=[],
     # matplotlibは既定で全バックエンドを収集しようとするため、実際に使うQtのみに限定する。

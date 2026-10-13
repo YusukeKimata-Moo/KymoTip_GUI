@@ -18,7 +18,7 @@ python -m PyInstaller --clean --noconfirm packaging\kymotip-windows.spec
 Compile the installer with Inno Setup after replacing the development version:
 
 ```powershell
-& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=1.0.0 packaging\windows\KymoTip.iss
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=1.0.2 packaging\windows\KymoTip.iss
 ```
 
 The result is written below `dist/installer/`. The installer uses the Center Knockout icon for its desktop and Start menu shortcuts while the installed executable and running GUI retain the mark-only icon.

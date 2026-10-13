@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -29,6 +30,8 @@ sam2_worker = project_root / "kymotip" / "segmentation" / "sam2_worker.py"
 # を明示的に同梱する。
 # PyInstallerを実行しているPython環境を使い、個人のインストール先に依存しない。
 _mkl_bin_dir = Path(sys.prefix) / "Library" / "bin"
+# conda activateを省略して実行した場合も、依存DLLの収集先を一致させる。
+os.environ["PATH"] = str(_mkl_bin_dir) + os.pathsep + os.environ.get("PATH", "")
 _mkl_dll_names = (
     "mkl_core.2.dll",
     "mkl_intel_thread.2.dll",
@@ -39,6 +42,12 @@ _mkl_dll_names = (
 mkl_binaries = [
     (str(_mkl_bin_dir / _name), ".") for _name in _mkl_dll_names
 ]
+
+
+def include_runtime_module(module_name):
+    # 外部ライブラリのテスト・ベンチマークは配布物に含めない。
+    return not {"tests", "test", "testing", "benchmarks"}.intersection(module_name.split("."))
+
 
 a = Analysis(
     [str(project_root / "packaging" / "launcher.py")],
@@ -57,10 +66,10 @@ a = Analysis(
         # scipy/scikit-imageは今後のプラグイン開発でサブモジュールが増えやすい
         # ため丸ごと同梱し、matplotlib/loessはサイズ増分が小さいのでついでに
         # 丸ごと同梱しておく。
-        + collect_submodules("scipy")
-        + collect_submodules("skimage")
-        + collect_submodules("matplotlib")
-        + collect_submodules("loess")
+        + collect_submodules("scipy", filter=include_runtime_module)
+        + collect_submodules("skimage", filter=include_runtime_module)
+        + collect_submodules("matplotlib", filter=include_runtime_module)
+        + collect_submodules("loess", filter=include_runtime_module)
     ),
     hookspath=[],
     # matplotlibは既定で全バックエンド(Tk/GTK/nbAgg等)を収集しようとし、

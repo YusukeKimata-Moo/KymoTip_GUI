@@ -6,7 +6,7 @@ tab-separated (`.tsv`) log.
 
 Copy this whole folder as a template when starting a new plugin.
 Requires a KymoTip build exposing `HISTORY_API_VERSION = 1`
-(`1.0.1+processing-history` or later).
+(`1.0.2` or later).
 
 ## Usage
 

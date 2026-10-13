@@ -234,7 +234,7 @@ a template for new plugins by copying the whole folder.
 
 ## 8. Processing history (HISTORY_API_VERSION = 1)
 
-Requires KymoTip `1.0.1+processing-history` or a later build exposing
+Requires KymoTip `1.0.2` or a later build exposing
 `HISTORY_API_VERSION >= 1`. `PLUGIN_API_VERSION` remains 1: existing plugins
 returning a zero-argument callable still load. Their standard form controls
 are recorded as `ui_snapshot_only`, which does not guarantee capture of hidden
