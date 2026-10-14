@@ -16,6 +16,8 @@ from __future__ import annotations
 # breaking change.
 PLUGIN_API_VERSION = 1
 
+from .history import HISTORY_API_VERSION, RunContext, TaskSpec, series_info  # noqa: E402
+
 from .core.io_utils import (  # noqa: E402
     append_log,
     discover_frames,
@@ -31,6 +33,10 @@ from .core.io_utils import (  # noqa: E402
 from .gui.stages.base import DirPicker, StageWidgetBase  # noqa: E402
 
 __all__ = [
+    "HISTORY_API_VERSION",
+    "RunContext",
+    "TaskSpec",
+    "series_info",
     "PLUGIN_API_VERSION",
     "StageWidgetBase",
     "DirPicker",

@@ -80,7 +80,7 @@ class MyStage(StageWidgetBase):
         ...  # add parameter input fields
 
     def build_task(self):
-        ...  # return a zero-argument callable; it runs on a background thread
+        ...  # return TaskSpec(execute, parameters, inputs, outputs); see section 8
 
     def on_task_finished(self, result):
         ...  # receives the return value of build_task() to update the preview, etc. (optional)
@@ -127,6 +127,10 @@ refactors. Always go through `kymotip.plugin_api`. Currently exported names:
 ```python
 from kymotip.plugin_api import (
     PLUGIN_API_VERSION,
+    HISTORY_API_VERSION,
+    TaskSpec,
+    RunContext,
+    series_info,
     StageWidgetBase,
     DirPicker,
     append_log,
@@ -227,3 +231,74 @@ computes per-frame area and perimeter from `02_segmentation` mask images and
 writes them out as a tab-separated log. It consists of two files:
 `__init__.py` (the implementation) and `README.md` (usage notes). Use it as
 a template for new plugins by copying the whole folder.
+
+## 8. Processing history (HISTORY_API_VERSION = 1)
+
+Requires KymoTip `1.0.2` or a later build exposing
+`HISTORY_API_VERSION >= 1`. `PLUGIN_API_VERSION` remains 1: existing plugins
+returning a zero-argument callable still load. Their standard form controls
+are recorded as `ui_snapshot_only`, which does not guarantee capture of hidden
+parameters or the actual selected input. Prefer `TaskSpec` for new plugins.
+
+The application writes one UTF-8 file, `processing_history.jsonl`, directly in
+the project base. Set a valid base in Input Preview and use Apply to All Stages
+before running. The project context is injected independently of `wire_project`.
+Do not write your own history file or place history files in image folders.
+
+```python
+from pathlib import Path
+from kymotip.plugin_api import StageWidgetBase, TaskSpec, RunContext, series_info
+
+class MyStage(StageWidgetBase):
+    stage_title = "My Measurement"
+    plugin_order = 2.5
+    plugin_version = "1.0.0"
+
+    # build_parameter_form and wire_project omitted here; see the full template.
+    def build_task(self):
+        prefix = self.fname_edit.text().strip()
+        threshold = self.threshold_spin.value()
+
+        def execute(context: RunContext):
+            threshold = context.parameters["threshold"]
+            source = context.inputs[0]
+            output_dir = Path(context.outputs[0]["directory"])
+            # Perform your analysis using these captured values.
+            # Propagate processing exceptions so the app can record failure.
+            return str(output_dir)
+
+        return TaskSpec(
+            execute=execute,
+            parameters={"threshold": threshold, "custom_option": {"enabled": True}},
+            inputs=[series_info(self.input_dir_picker.path(), prefix, "tif", role="images")],
+            outputs=[series_info(self.output_dir_picker.path(), prefix, role="measurements")],
+        )
+```
+
+- `TaskSpec(execute, parameters, inputs=(), outputs=(), requested_parameters={},
+  parameter_schema_version=1)` copies and freezes nested settings at creation.
+  `execute(context)` runs in the background and receives these same settings.
+  Do not reread Qt controls inside the worker or use mutable GUI state in it.
+- Parameter keys and history names must be English. Arbitrary custom keys and
+  nested lists/dictionaries are supported; there is no built-in parameter whitelist.
+  Use `history_name = "English Name"` if the visible `stage_title` is localized.
+  Preserve literal paths, prefixes and user object IDs, including non-English text.
+- Supported values: finite numbers, strings, booleans, None, lists/tuples,
+  dictionaries, Path, dataclasses, NumPy scalars and small setting arrays
+  (up to 1024 elements). Do not pass images, models, Qt widgets or functions.
+  Dictionaries become read-only mappings and sequences become tuples in the context.
+- Describe each input/output series once: folder, prefix/pattern, extension,
+  role, channel and object ID as appropriate. Use parameter fields such as
+  `num_frames` or `start_frame` for the selected range. Never enumerate frame
+  filenames or report per-frame history/progress.
+- Store effective values with units in their names when applicable. Optionally
+  supply `requested_parameters` for a UI value converted before use (e.g.
+  pixels per micron versus microns per pixel). Omit unused mode-specific values.
+- The app records `run_started` with a timezone-aware `started_at`, then
+  `run_finished` with `status: success` or `failed`. Both share `run_id`.
+  It does not store completion counts, end times, durations or detailed errors.
+  A rerun gets a new ID. An interrupted run without a result remains unknown.
+- The app detects failure from exceptions. Do not swallow an analysis exception
+  and return an error message as a successful result.
+- History writing uses thread and OS file locks. An invalid/incomplete final
+  record is preserved and blocks further runs until the file is repaired.

@@ -98,9 +98,9 @@ Every processing-stage tab shares the same layout: a control panel on the left, 
 
 - **Input directory / Output directory**: take a path you can type directly or choose with the "Browse..." button.
 - **Parameter fields**: specific to that stage. Stages with a lot of parameters scroll vertically so everything stays reachable.
-- **Run button**: starts processing. It runs in a background thread, so the interface stays responsive while it works.
+- **Run button**: starts processing. It runs in a background thread, so the interface stays responsive while it works. The start time, parameters and success/failure result are automatically saved to the history file in the project base (see [Processing history](#processing-history)).
 - **Progress bar**: appears while a run is in progress and disappears once it finishes.
-- **Log panel**: records start and finish messages plus any errors in order. If something goes wrong, that's the first place to check.
+- **Log panel**: records start and finish messages plus any errors in order. If something goes wrong, that's the first place to check. To review analysis settings and success/failure later, open the saved [processing history](#processing-history).
 
 The preview on the right shows either an image you can step through frame by frame or a plot of the contour, centerline, or resulting graph, depending on the stage. It refreshes automatically once a run finishes.
 
@@ -122,6 +122,29 @@ The "0. Input Preview" tab has a couple of controls that don't appear anywhere e
 | 7. Growth | `{base}/05_centerline` | `{base}/07_growth` |
 
 This saves you from setting every folder by hand. When you switch to a different project (a different image set), just change the project base directory and file name prefix and click "Apply to All Stages" again.
+
+### Processing history
+
+Set a valid **Project base directory** and click **Apply to All Stages** before running an analysis. Each run automatically appends its start time, stage, input series/prefix, parameters and `success` or `failed` result to **`processing_history.jsonl`** in that base folder. The file is UTF-8 text with English field names. Actual paths, prefixes and object IDs keep their original spelling.
+
+All stages and plugins share this one file. Each run normally has two lines (start and result), linked by `run_id`; reruns are appended as separate runs. Frame filenames, intermediate progress and completed-frame counts are not listed. The history file is never placed in a stage's image output folder. Use an output folder separate from the project base.
+
+To review the history, open `processing_history.jsonl` from the folder selected as Project base directory in a text editor, then search for an input prefix or stage name. The file retains the records after you close the application.
+
+| Field | Meaning |
+|---|---|
+| `started_at` | Start date and time, including the time zone |
+| `stage_name` | The processing stage that ran |
+| `inputs` | Folder, prefix and other information identifying the input time-lapse |
+| `parameters` | Settings used for that run; fields vary by stage or plugin |
+| `run_id` | ID linking the start record to its result |
+| `status` | `success` or `failed`, stored in the result record |
+
+Read the start and result lines with the same `run_id` together. Rerunning a failed stage adds a new run with a new ID.
+
+Settings are captured when Run is pressed. Changing settings or switching projects afterwards does not change an already running task's settings or history destination. New plugins can supply their own parameters via `TaskSpec`; older plugins are marked `ui_snapshot_only`, because hidden settings cannot be inferred reliably. Their analysis code must also capture its own settings to prevent mid-run changes.
+
+If a process is interrupted, its start record may have no result; this is not confirmation of success or failure. History write errors are displayed. A damaged final line is preserved and must be repaired before more history can be appended. Detailed processing errors remain in the stage's Log panel and error dialog.
 
 ### The "Auto-detect from input directory" button
 

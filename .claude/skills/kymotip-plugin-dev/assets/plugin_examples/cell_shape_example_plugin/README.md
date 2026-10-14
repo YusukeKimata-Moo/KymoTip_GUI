@@ -5,6 +5,8 @@ A minimal example plugin that computes per-frame area (px) and perimeter
 tab-separated (`.tsv`) log.
 
 Copy this whole folder as a template when starting a new plugin.
+Requires a KymoTip build exposing `HISTORY_API_VERSION = 1`
+(`1.0.2` or later).
 
 ## Usage
 
@@ -26,6 +28,11 @@ Copy this whole folder as a template when starting a new plugin.
 
 `cell_shape_example/<object_id>_cell_shape.tsv`
 (columns: `frame`, `area_px`, `perimeter_px`)
+
+The application also records the start time, object ID, number of frames,
+input/output series and success/failure in the project's shared
+`processing_history.jsonl`. This history file is in the project base, not
+the measurement output folder. Set the project base using Apply to All Stages.
 
 See `.claude/skills/kymotip-plugin-dev/references/PLUGIN_SPEC.md` for the
 full specification.

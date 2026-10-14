@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "0.0.0-dev"
+  #define MyAppVersion "1.0.2"
 #endif
 
 #define MyAppName "KymoTip"
@@ -33,9 +33,9 @@ Name: "desktopicon"; Description: "デスクトップにショートカットを
 
 [Files]
 Source: "..\..\dist\KymoTip\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\envs\sam2\*"; DestDir: "{app}\sam2env"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\build\windows-sam2-runtime\*"; DestDir: "{app}\sam2env"; Excludes: "__pycache__\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\icons\kymotip-shortcut.ico"; DestDir: "{app}\assets"; DestName: "kymotip-shortcut.ico"; Flags: ignoreversion
-Source: "..\..\.claude\*"; DestDir: "{app}\.claude"; Excludes: "settings.local.json"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\.claude\skills\kymotip-plugin-dev\*"; DestDir: "{app}\.claude\skills\kymotip-plugin-dev"; Excludes: "__pycache__\*,*.pyc,*.pyo"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\kymotip-shortcut.ico"; WorkingDir: "{app}"

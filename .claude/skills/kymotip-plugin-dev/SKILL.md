@@ -42,6 +42,10 @@ Copying and adapting this example is the fastest path for most new plugins.
    PLUGIN_SPEC.md section 2 (`stage_title`, `plugin_order`, optional
    `tab_label` / `plugin_api_version`, and only `kymotip.plugin_api` imports —
    never reach into KymoTip internals directly).
+   Return `TaskSpec` with English parameter keys and compact input/output
+   series descriptions for shared processing history (PLUGIN_SPEC.md section 8).
+   Use the captured `RunContext` values in processing; do not read GUI controls
+   in the worker or enumerate per-frame paths in history.
 5. Tell the user to restart the KymoTip GUI and enable the plugin from the
    toolbar's "Plugins" menu to verify it loads and appears as a tab.
 6. If the user wants to share the plugin with lab members, follow the sharing
