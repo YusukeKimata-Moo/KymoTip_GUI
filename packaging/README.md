@@ -15,6 +15,24 @@ python packaging\icons\build_square_logos.py
 python -m PyInstaller --clean --noconfirm packaging\kymotip-windows.spec
 ```
 
+Prepare a separate SAM2 runtime for distribution before compiling the installer.
+The preparation command leaves `packaging/envs/sam2` unchanged, excludes unused
+command-line tools, compiler-only metadata (CMake/pkg-config), debugging symbols,
+and old bytecode caches, removes local environment history,
+and strips personal build paths from package metadata and NumPy/SciPy build
+information. It scans the staged files for the source machine's private paths
+and verifies that Python, SAM2, torch, and the tiny checkpoint are unchanged.
+The destination must not already exist; use a fresh staging directory for each
+build. The installer expects `build/windows-sam2-runtime`.
+
+```powershell
+python packaging\windows\prepare_sam2_runtime.py
+```
+
+Keep `PYTHONDONTWRITEBYTECODE=1` set when testing the staged runtime, then run
+`python packaging\windows\prepare_sam2_runtime.py --audit-only` before compiling.
+This catches bytecode caches or personal paths introduced after preparation.
+
 Compile the installer with Inno Setup after replacing the development version:
 
 ```powershell
@@ -22,6 +40,10 @@ Compile the installer with Inno Setup after replacing the development version:
 ```
 
 The result is written below `dist/installer/`. The installer uses the Center Knockout icon for its desktop and Start menu shortcuts while the installed executable and running GUI retain the mark-only icon.
+
+For installation testing, launch the installer directly from Windows Explorer
+and check its version in Windows Settings. Registration observed from an
+automated execution environment can differ from the normal Windows view.
 
 ## macOS build (untested)
 
